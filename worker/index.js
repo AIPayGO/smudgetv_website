@@ -99,6 +99,52 @@ async function sendSESEmail(env, toEmail) {
   });
 }
 
+async function addToContactList(env, email) {
+  for (const k of ['AWS_REGION', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'SES_CONTACT_LIST_NAME']) {
+    if (!env[k]) throw new Error(`Missing env var: ${k}`);
+  }
+
+  const region = env.AWS_REGION;
+  const service = 'ses';
+  const host = `email.${region}.amazonaws.com`;
+  const listName = encodeURIComponent(env.SES_CONTACT_LIST_NAME);
+  const path = `/v2/email/contact-lists/${listName}/contacts`;
+
+  const payload = JSON.stringify({ EmailAddress: email });
+
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]/g, '').replace(/\.\d{3}/, '');
+  const dateStamp = amzDate.slice(0, 8);
+  const payloadHash = await sha256hex(payload);
+
+  const canonicalHeaders = `content-type:application/json\nhost:${host}\nx-amz-date:${amzDate}\n`;
+  const signedHeaders = 'content-type;host;x-amz-date';
+  const canonicalRequest = [
+    'POST', path, '', canonicalHeaders, signedHeaders, payloadHash,
+  ].join('\n');
+
+  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+  const stringToSign = [
+    'AWS4-HMAC-SHA256', amzDate, credentialScope,
+    await sha256hex(canonicalRequest),
+  ].join('\n');
+
+  const signingKey = await getSigningKey(env.AWS_SECRET_ACCESS_KEY, dateStamp, region, service);
+  const signature = toHex(await hmac(signingKey, stringToSign));
+
+  const authHeader = `AWS4-HMAC-SHA256 Credential=${env.AWS_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  return fetch(`https://${host}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Amz-Date': amzDate,
+      Authorization: authHeader,
+    },
+    body: payload,
+  });
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
@@ -141,6 +187,16 @@ export default {
         JSON.stringify({ error: 'Failed to subscribe. Please try again.' }),
         { status: 500, headers }
       );
+    }
+
+    try {
+      const listResponse = await addToContactList(env, email);
+      if (!listResponse.ok) {
+        const listErr = await listResponse.text();
+        console.error('SES contact list error', listResponse.status, listErr);
+      }
+    } catch (e) {
+      console.error('SES contact list exception', e.message);
     }
 
     return new Response(JSON.stringify({ success: true }), { status: 200, headers });
