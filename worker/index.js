@@ -1,11 +1,12 @@
 const ALLOWED_ORIGINS = ['https://smudgetv.com', 'https://www.smudgetv.com'];
 
 function corsHeaders(origin) {
-  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  if (!ALLOWED_ORIGINS.includes(origin)) return { 'Vary': 'Origin' };
   return {
-    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
   };
 }
 
@@ -41,6 +42,9 @@ async function getSigningKey(secret, dateStamp, region, service) {
 }
 
 async function sendSESEmail(env, toEmail) {
+  for (const k of ['AWS_REGION', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'SES_FROM_EMAIL', 'SES_TO_EMAIL']) {
+    if (!env[k]) throw new Error(`Missing env var: ${k}`);
+  }
   const region = env.AWS_REGION;
   const service = 'ses';
   const host = `email.${region}.amazonaws.com`;
@@ -120,8 +124,19 @@ export default {
       return new Response(JSON.stringify({ error: 'Invalid email address' }), { status: 400, headers });
     }
 
-    const sesResponse = await sendSESEmail(env, email);
+    let sesResponse;
+    try {
+      sesResponse = await sendSESEmail(env, email);
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Failed to subscribe. Please try again.' }),
+        { status: 500, headers }
+      );
+    }
+
     if (!sesResponse.ok) {
+      const errText = await sesResponse.text();
+      console.error('SES error', sesResponse.status, errText);
       return new Response(
         JSON.stringify({ error: 'Failed to subscribe. Please try again.' }),
         { status: 500, headers }
