@@ -8,7 +8,8 @@
   },
   "assets": {
     "directory": ".",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "exclude": [".git", ".claude", ".wrangler", "worker", "docs", "node_modules"]
   },
   "compatibility_flags": [
     "nodejs_compat"
