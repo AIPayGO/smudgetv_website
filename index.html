@@ -117,6 +117,7 @@
     .btn-primary:hover { background: #0f766e; transform: translateY(-1px); }
     .form-footnote { font-size: 0.82rem; color: var(--muted); margin-top: 10px; text-align: center; }
     .success-msg { display: none; font-size: 1rem; color: var(--mint); margin-top: 16px; text-align: center; }
+    .form-error { font-size: 0.82rem; color: #f87171; margin-top: 8px; text-align: center; }
 
     /* ─── BADGES ──────────────────────────────────────────── */
     .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 44px; }
@@ -534,29 +535,77 @@
   </footer>
 
   <script>
+    var WORKER_URL = 'https://smudgetv-subcribe.jun-barcellano.workers.dev/subscribe';
+
+    function clearError(formRow) {
+      var existing = formRow.parentElement.querySelector('.form-error');
+      if (existing) existing.remove();
+    }
+
+    function showError(formRow, message) {
+      clearError(formRow);
+      var msg = document.createElement('p');
+      msg.className = 'form-error';
+      msg.textContent = message;
+      formRow.insertAdjacentElement('afterend', msg);
+    }
+
+    async function subscribeEmail(inputId, btn, successId) {
+      var input = document.getElementById(inputId);
+      var email = input.value.trim();
+      var formRow = btn.closest('.form-row');
+
+      clearError(formRow);
+
+      if (!email || !email.includes('@')) {
+        input.focus();
+        return;
+      }
+
+      var originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Adding…';
+
+      try {
+        var res = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email }),
+        });
+        var data = await res.json();
+
+        if (res.ok && data.success) {
+          input.value = '';
+          if (successId) {
+            document.getElementById(successId).style.display = 'block';
+          } else {
+            var ok = document.createElement('p');
+            ok.className = 'success-msg';
+            ok.style.display = 'block';
+            ok.textContent = "You're on the list — we'll be in touch!";
+            formRow.insertAdjacentElement('afterend', ok);
+          }
+        } else {
+          showError(formRow, data.error || 'Something went wrong — please try again.');
+        }
+      } catch (e) {
+        showError(formRow, 'Something went wrong — please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+
     function handleSubmit() {
-      var email = document.getElementById('email').value.trim();
-      if (!email || !email.includes('@')) {
-        document.getElementById('email').focus();
-        return;
-      }
-      document.getElementById('successMsg').style.display = 'block';
-      document.getElementById('email').value = '';
-      var link = document.createElement('a');
-      link.href = 'mailto:helpdesk@smudgetv.com?subject=Waitlist+Signup&body=Please+add+me+to+the+Smudge+waitlist:+' + encodeURIComponent(email);
-      link.click();
+      var btn = document.querySelector('#email').closest('.form-row').querySelector('.btn-primary');
+      subscribeEmail('email', btn, 'successMsg');
     }
+
     function handleSubmit2() {
-      var email = document.getElementById('email2').value.trim();
-      if (!email || !email.includes('@')) {
-        document.getElementById('email2').focus();
-        return;
-      }
-      document.getElementById('email2').value = '';
-      var link = document.createElement('a');
-      link.href = 'mailto:helpdesk@smudgetv.com?subject=Waitlist+Signup&body=Please+add+me+to+the+Smudge+waitlist:+' + encodeURIComponent(email);
-      link.click();
+      var btn = document.querySelector('#email2').closest('.form-row').querySelector('.btn-primary');
+      subscribeEmail('email2', btn, null);
     }
+
     document.getElementById('email').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') handleSubmit();
     });
