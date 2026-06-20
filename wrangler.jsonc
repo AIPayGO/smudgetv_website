@@ -1,14 +1,22 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "smudgetv-subscribe",
+  "main": "worker/index.js",
   "compatibility_date": "2026-06-20",
   "observability": {
     "enabled": true
   },
   "assets": {
-    "directory": "."
+    "directory": ".",
+    "binding": "ASSETS"
   },
   "compatibility_flags": [
     "nodejs_compat"
-  ]
+  ],
+  "vars": {
+    "AWS_REGION": "ap-southeast-2",
+    "SES_FROM_EMAIL": "noreply@smudgetv.com",
+    "SES_TO_EMAIL": "helpdesk@smudgetv.com",
+    "SES_CONTACT_LIST_NAME": "smudgetv-waitlist"
+  }
 }
