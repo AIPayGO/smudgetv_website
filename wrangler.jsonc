@@ -18,5 +18,16 @@
     "SES_FROM_EMAIL": "noreply@smudgetv.com",
     "SES_TO_EMAIL": "helpdesk@smudgetv.com",
     "SES_CONTACT_LIST_NAME": "smudgetv-waitlist"
+  },
+  "env": {
+    "uat": {
+      "name": "smudgetv-subscribe-uat",
+      "vars": {
+        "AWS_REGION": "ap-southeast-2",
+        "SES_FROM_EMAIL": "noreply@smudgetv.com",
+        "SES_TO_EMAIL": "helpdesk@smudgetv.com",
+        "SES_CONTACT_LIST_NAME": "smudgetv-waitlist"
+      }
+    }
   }
 }
