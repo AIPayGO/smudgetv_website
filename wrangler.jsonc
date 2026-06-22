@@ -22,6 +22,7 @@
   "env": {
     "uat": {
       "name": "smudgetv-subscribe-uat",
+      "custom_domains": ["uat.smudgetv.com"],
       "vars": {
         "AWS_REGION": "ap-southeast-2",
         "SES_FROM_EMAIL": "noreply@smudgetv.com",
