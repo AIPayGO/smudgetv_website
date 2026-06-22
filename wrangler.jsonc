@@ -7,9 +7,8 @@
     "enabled": true
   },
   "assets": {
-    "directory": ".",
-    "binding": "ASSETS",
-    "exclude": [".git", ".claude", ".wrangler", "worker", "docs", "node_modules"]
+    "directory": "./public",
+    "binding": "ASSETS"
   },
   "compatibility_flags": [
     "nodejs_compat"
